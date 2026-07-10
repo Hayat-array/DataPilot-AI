@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "name": "datapilot-ai",
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.py"
+    }
+  ],
+  "env": {
+    "FLASK_ENV": "production",
+    "VALIDATE_ENV_ON_START": "false"
+  },
+  "regions": ["iad1"]
+}
