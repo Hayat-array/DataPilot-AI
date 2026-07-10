@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Environment secrets — NEVER commit
+.env
+
+# Pytest / test cache
+.pytest_cache/
+.cache/
+htmlcov/
+*.coveragerc
+coverage.xml
+.coverage
+
+# Logs
+logs/*.log
+logs/*.txt
+
+# Uploads — user data, not source code
+uploads/*
+!uploads/README.md
+
+# Generated code / outputs / reports — runtime artifacts
+generated_code/sandbox/
+outputs/*
+!outputs/.gitkeep
+reports/*
+!reports/.gitkeep
+
+# IDE / OS files
+.idea/
+.vscode/
+*.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore

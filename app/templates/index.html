@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataPilot AI — Autonomous Data Science Platform</title>
+    <meta name="description" content="DataPilot AI: Production-grade autonomous AI platform for data analysis, visualization and insights.">
+    <!-- High-Contrast Data Visualization Favicon (solid purple background + white columns + cyan trend line) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%237c3aed'/%3E%3Crect x='14' y='32' width='8' height='18' rx='2.5' fill='white'/%3E%3Crect x='28' y='22' width='8' height='28' rx='2.5' fill='white'/%3E%3Crect x='42' y='12' width='8' height='38' rx='2.5' fill='white' opacity='0.9'/%3E%3Cpath d='M 8,44 L 22,30 L 36,20 L 52,14' stroke='%2338bdf8' stroke-width='4.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M 42,14 L 52,14 L 52,24' stroke='%2338bdf8' stroke-width='4.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     TOP NAVIGATION BAR
+═══════════════════════════════════════════ -->
+<nav class="topbar" id="topbar">
+    <div class="topbar-left">
+        <!-- Sidebar Toggle -->
+        <button class="sidebar-toggle-btn" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle Sidebar">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <!-- Logo -->
+        <div class="logo-wrap">
+            <div class="logo-badge">
+                <i class="fa-solid fa-chart-column"></i>
+            </div>
+            <div class="logo-info">
+                <span class="logo-name">DataPilot <span class="logo-ai">AI</span></span>
+                <span class="logo-sub">Autonomous Analytics Platform</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="topbar-center-placeholder"></div>
+
+    <div class="topbar-right">
+        <!-- Status Indicators -->
+        <div class="status-group">
+            <div class="status-indicator" id="liveness-indicator" title="Server liveness">
+                <div class="status-dot pulsing" id="liveness-status"></div>
+                <span id="liveness-text">Checking</span>
+            </div>
+            <div class="status-divider"></div>
+            <div class="status-indicator" id="db-indicator" title="Database connectivity">
+                <i class="fa-solid fa-database" style="font-size:0.75rem; color: var(--text-muted);"></i>
+                <span id="db-text">Checking</span>
+                <div class="status-dot" id="db-status"></div>
+            </div>
+        </div>
+
+        <!-- Theme Toggle -->
+        <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+            <div class="toggle-track">
+                <div class="toggle-thumb">
+                    <i class="fa-solid fa-sun" id="theme-icon-light"></i>
+                    <i class="fa-solid fa-moon" id="theme-icon-dark" style="display:none;"></i>
+                </div>
+            </div>
+        </button>
+
+        <!-- Version badge -->
+        <div class="version-badge">v1.0.0</div>
+    </div>
+</nav>
+
+<!-- Tab Navigation Pills at body level (avoids containing-block alignment bugs) -->
+<div class="topbar-center">
+    <div class="tab-pills" id="tab-pills">
+        <button class="tab-pill active" id="pill-profile" onclick="switchTab('profile', this)">
+            <i class="fa-solid fa-table-columns"></i> <span>Profile</span>
+        </button>
+        <button class="tab-pill" id="pill-visualizer" onclick="switchTab('visualizer', this)">
+            <i class="fa-solid fa-chart-area"></i> <span>Visualizer</span>
+        </button>
+        <button class="tab-pill" id="pill-query" onclick="switchTab('query', this)">
+            <i class="fa-solid fa-robot"></i> <span>Ask AI</span>
+        </button>
+        <button class="tab-pill" id="pill-rag" onclick="switchTab('rag', this)">
+            <i class="fa-solid fa-database"></i> <span>RAG</span>
+        </button>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MAIN LAYOUT
+═══════════════════════════════════════════ -->
+<div class="app-layout" id="appLayout">
+
+    <!-- ─── SIDEBAR ─── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-inner">
+
+            <!-- Dataset Upload -->
+            <div class="sidebar-block">
+                <div class="sidebar-block-title">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <span>Dataset</span>
+                </div>
+                <div class="upload-zone" id="upload-zone"
+                     onclick="document.getElementById('dataset-upload').click()"
+                     ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                     ondragleave="this.classList.remove('drag-over')"
+                     ondrop="handleDrop(event)">
+                    <div class="upload-icon-wrap">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <p class="upload-title">Drop file here</p>
+                    <p class="upload-subtitle">CSV · JSON · Excel</p>
+                    <input type="file" id="dataset-upload" style="display:none;" onchange="handleUpload(this)" accept=".csv,.json,.xlsx,.xls">
+                </div>
+                <div id="file-card-container"></div>
+            </div>
+
+            <!-- Dataset Stats quick view -->
+            <div class="sidebar-block" id="quick-stats-block" style="display:none;">
+                <div class="sidebar-block-title">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Quick Stats</span>
+                </div>
+                <div class="quick-stats-grid">
+                    <div class="quick-stat">
+                        <span class="qs-value" id="qs-rows">0</span>
+                        <span class="qs-label">Rows</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="qs-value" id="qs-cols">0</span>
+                        <span class="qs-label">Cols</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="qs-value" id="qs-quality">-</span>
+                        <span class="qs-label">Quality</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="qs-value" id="qs-size">-</span>
+                        <span class="qs-label">Size</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agent Terminal -->
+            <div class="sidebar-block sidebar-terminal-block">
+                <div class="sidebar-block-title">
+                    <i class="fa-solid fa-terminal"></i>
+                    <span>Orchestrator</span>
+                    <button class="icon-btn" onclick="clearConsoleLogs()" title="Clear logs" style="margin-left:auto;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+                <div class="terminal-wrap">
+                    <div class="terminal-body" id="terminal-log">
+                        <div class="tl system">[sys] Awaiting dataset ingestion...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- ─── CONTENT ─── -->
+    <main class="main-content" id="mainContent">
+
+        <!-- ══ PROFILE TAB ══ -->
+        <div id="tab-profile" class="tab-content active">
+
+            <!-- Metric Cards Row -->
+            <div class="metric-cards-row">
+                <div class="metric-card metric-indigo">
+                    <div class="metric-icon"><i class="fa-solid fa-table-rows"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-value" id="profile-rows">—</div>
+                        <div class="metric-label">Total Rows</div>
+                    </div>
+                </div>
+                <div class="metric-card metric-cyan">
+                    <div class="metric-icon"><i class="fa-solid fa-table-columns"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-value" id="profile-cols">—</div>
+                        <div class="metric-label">Columns</div>
+                    </div>
+                </div>
+                <div class="metric-card metric-emerald">
+                    <div class="metric-icon"><i class="fa-solid fa-shield-check"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-value" id="profile-quality">—</div>
+                        <div class="metric-label">Data Quality</div>
+                    </div>
+                </div>
+                <div class="metric-card metric-violet">
+                    <div class="metric-icon"><i class="fa-solid fa-memory"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-value" id="profile-size">—</div>
+                        <div class="metric-label">Memory</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fa-solid fa-filter"></i> Data Filter</h2>
+                    <button class="chip-btn" onclick="clearAllFilters()"><i class="fa-solid fa-xmark"></i> Clear all</button>
+                </div>
+                <div class="filter-row">
+                    <select id="filter-column" class="form-select">
+                        <option value="">Column...</option>
+                    </select>
+                    <select id="filter-operator" class="form-select">
+                        <option value="==">== equals</option>
+                        <option value="!=">!= not equals</option>
+                        <option value=">">&gt; greater</option>
+                        <option value="<">&lt; less</option>
+                        <option value=">=">&gt;= greater/eq</option>
+                        <option value="<=">&lt;= less/eq</option>
+                        <option value="contains">contains text</option>
+                    </select>
+                    <input type="text" id="filter-val" class="form-input" placeholder="Value...">
+                    <button class="btn-primary" onclick="applySelectedFilter()">
+                        <i class="fa-solid fa-plus"></i> Add Filter
+                    </button>
+                </div>
+                <!-- Active Filter Tags -->
+                <div id="filter-active-panel" style="display:none; margin-top:0.75rem; display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;">
+                    <span class="tag-label">Active:</span>
+                    <div id="filter-badges" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
+                </div>
+            </div>
+
+            <!-- Data Preview Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fa-solid fa-table"></i> Dataset Preview</h2>
+                    <span class="badge-count" id="preview-count">No data</span>
+                </div>
+                <div class="table-scroller">
+                    <table class="data-table">
+                        <thead id="preview-thead">
+                            <tr><th>Column A</th><th>Column B</th><th>Column C</th></tr>
+                        </thead>
+                        <tbody id="preview-tbody">
+                            <tr><td colspan="3" class="empty-cell">Upload a dataset to preview rows.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Schema Statistics -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fa-solid fa-list-check"></i> Schema Statistics</h2>
+                </div>
+                <div class="table-scroller">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Column</th><th>Type</th><th>Nulls</th><th>Stats</th></tr>
+                        </thead>
+                        <tbody id="schema-tbody">
+                            <tr><td colspan="4" class="empty-cell">No schema available.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ VISUALIZER TAB ══ -->
+        <div id="tab-visualizer" class="tab-content">
+            <div class="card viz-card">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fa-solid fa-chart-area"></i> Interactive Visualizer</h2>
+                    <div style="display:flex; gap:0.5rem;" id="canvas-toolbar">
+                        <button class="btn-ghost" onclick="resetVisualChartZoom()"><i class="fa-solid fa-arrows-rotate"></i> Reset Zoom</button>
+                        <button class="btn-ghost" onclick="downloadVisualChart()"><i class="fa-solid fa-download"></i> Export PNG</button>
+                    </div>
+                </div>
+                <div class="viz-layout">
+                    <!-- Controls panel -->
+                    <div class="viz-controls">
+                        <div class="form-group">
+                            <label class="form-label">Chart Type</label>
+                            <div class="chart-type-grid">
+                                <button class="chart-btn active" onclick="setChartType('bar', this)" title="Bar">
+                                    <i class="fa-solid fa-chart-bar"></i><span>Bar</span>
+                                </button>
+                                <button class="chart-btn" onclick="setChartType('line', this)" title="Line">
+                                    <i class="fa-solid fa-chart-line"></i><span>Line</span>
+                                </button>
+                                <button class="chart-btn" onclick="setChartType('scatter', this)" title="Scatter">
+                                    <i class="fa-solid fa-circle-dot"></i><span>Scatter</span>
+                                </button>
+                                <button class="chart-btn" onclick="setChartType('pie', this)" title="Pie">
+                                    <i class="fa-solid fa-chart-pie"></i><span>Pie</span>
+                                </button>
+                                <button class="chart-btn" onclick="setChartType('doughnut', this)" title="Doughnut">
+                                    <i class="fa-solid fa-circle-half-stroke"></i><span>Donut</span>
+                                </button>
+                                <button class="chart-btn" onclick="setChartType('radar', this)" title="Radar">
+                                    <i class="fa-solid fa-circle-nodes"></i><span>Radar</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="visualizer-x">X Axis</label>
+                            <select id="visualizer-x" class="form-select" onchange="renderActiveChart()">
+                                <option value="">Select column...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="visualizer-y">Y Axis <span style="color:var(--text-muted); font-weight:400;">(optional)</span></label>
+                            <select id="visualizer-y" class="form-select" onchange="renderActiveChart()">
+                                <option value="">Select column...</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary full-width" onclick="renderActiveChart()">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Chart
+                        </button>
+                    </div>
+
+                    <!-- Canvas -->
+                    <div class="viz-canvas-wrap">
+                        <div class="viz-placeholder" id="canvas-placeholder">
+                            <i class="fa-solid fa-chart-gantt"></i>
+                            <p>Select columns to render a visualization</p>
+                        </div>
+                        <canvas id="chart-canvas" style="display:none;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ AI COPILOT TAB ══ -->
+        <div id="tab-query" class="tab-content">
+            <div class="chat-card">
+                <!-- Chat Header -->
+                <div class="chat-card-header">
+                    <div style="display:flex; align-items:center; gap:1rem;">
+                        <div class="ai-avatar">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight:700; font-size:1rem;">Ask AI</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">Multi-agent autonomous analytics engine</div>
+                        </div>
+                    </div>
+                    <div class="ai-online-badge"><span></span> Online</div>
+                </div>
+
+                <!-- Chat Suggestions -->
+                <div class="chat-suggestions" id="chat-suggestions">
+                    <button class="suggestion-chip" onclick="injectSuggestion('show descriptive summary')">📊 Describe dataset</button>
+                    <button class="suggestion-chip" onclick="injectSuggestion('plot bar chart')">📈 Plot bar chart</button>
+                    <button class="suggestion-chip" onclick="injectSuggestion('show missing values')">🔍 Missing values</button>
+                    <button class="suggestion-chip" onclick="injectSuggestion('identify numeric columns')">🔢 Numeric columns</button>
+                </div>
+
+                <!-- Messages -->
+                <div class="chat-messages" id="chat-messages">
+                    <div class="chat-bubble bot">
+                        <div class="bubble-avatar bot-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="bubble-body">
+                            <p>Hello! I am your Autonomous Data Science Co-Pilot, **Ask AI**. Ingest a dataset using the controls on the left, and ask me to clean, analyze, or plot relations.</p>
+                            <span class="bubble-time">Just now</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Bar -->
+                <div class="chat-input-bar">
+                    <div class="chat-input-wrap">
+                        <input type="text" id="chat-text" class="chat-input" placeholder="Ask me anything about your data..." onkeypress="handleChatKey(event)">
+                        <button class="chat-send-btn" onclick="sendChatMessage()">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ RAG TAB ══ -->
+        <div id="tab-rag" class="tab-content">
+            <div class="rag-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fa-solid fa-file-arrow-up"></i> Ingest Documents</h2>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Upload PDF Reference</label>
+                        <div class="file-input-wrap">
+                            <input type="file" id="pdf-ingest" class="form-input" accept=".pdf" style="cursor:pointer;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">GitHub Documentation URL</label>
+                        <input type="text" id="github-url" class="form-input" placeholder="https://github.com/pandas-dev/pandas">
+                    </div>
+                    <button class="btn-primary" onclick="ingestDocumentation()" style="margin-top:0.5rem;">
+                        <i class="fa-solid fa-bolt"></i> Ingest & Chunk into FAISS
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fa-solid fa-layer-group"></i> Vector Index</h2>
+                        <span class="badge-count" id="rag-doc-count">2 docs</span>
+                    </div>
+                    <div class="doc-list" id="indexed-docs">
+                        <div class="doc-row">
+                            <div class="doc-row-icon"><i class="fa-solid fa-file-pdf"></i></div>
+                            <div class="doc-row-info">
+                                <strong>pandas_api_v2.pdf</strong>
+                                <span>Indexed • 124 chunks</span>
+                            </div>
+                            <span class="doc-badge">FAISS</span>
+                        </div>
+                        <div class="doc-row">
+                            <div class="doc-row-icon"><i class="fa-solid fa-file-pdf"></i></div>
+                            <div class="doc-row-info">
+                                <strong>numpy_linear_algebra.pdf</strong>
+                                <span>Indexed • 86 chunks</span>
+                            </div>
+                            <span class="doc-badge">FAISS</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+    </main>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

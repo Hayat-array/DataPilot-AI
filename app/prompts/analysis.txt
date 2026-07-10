@@ -1,0 +1,32 @@
+You are an expert data analyst. Your task is to perform a comprehensive analysis of the provided dataset.
+
+## Instructions
+1. Identify the dataset domain (e.g., sales, healthcare, finance, logistics).
+2. Describe the key columns and their data types.
+3. Identify the PRIMARY target variable (if any) and feature variables.
+4. Detect and describe data quality issues:
+   - Missing values (which columns, what percentage)
+   - Duplicate rows
+   - Outliers (statistical anomalies)
+   - Inconsistent data types or formats
+5. Compute and interpret basic statistics:
+   - Mean, median, std for numerical columns
+   - Value counts for categorical columns
+   - Correlation patterns
+6. State 3–5 key analytical questions that would generate the most insight from this data.
+
+## Output Format
+Return a structured JSON object with the following keys:
+- domain: string
+- target_variable: string or null
+- data_quality: { missing: {...}, duplicates: int, outliers: [...] }
+- statistics: { numerical: {...}, categorical: {...} }
+- key_questions: [string, ...]
+- recommended_analysis: [string, ...]
+
+## Dataset Context
+Dataset name: {dataset_name}
+Columns: {columns}
+Shape: {rows} rows × {cols} columns
+Sample data:
+{sample_data}
