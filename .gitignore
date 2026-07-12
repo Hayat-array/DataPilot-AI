@@ -3,49 +3,42 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-*.egg
-*.egg-info/
-dist/
-build/
 *.so
 
-# Virtual environment
+# Virtual Environment
 .venv/
 venv/
 env/
-ENV/
 
-# Environment secrets — NEVER commit
+# Environment Variables
 .env
+.env.*
 
-# Pytest / test cache
+# IDE
+.vscode/
+.idea/
+
+# Testing
 .pytest_cache/
-.cache/
-htmlcov/
-*.coveragerc
-coverage.xml
 .coverage
+htmlcov/
 
 # Logs
-logs/*.log
-logs/*.txt
+logs/
+*.log
 
-# Uploads — user data, not source code
-uploads/*
-!uploads/README.md
+# Runtime Generated Files
+uploads/
+generated_code/
+outputs/
+reports/
 
-# Generated code / outputs / reports — runtime artifacts
-generated_code/sandbox/
-outputs/*
-!outputs/.gitkeep
-reports/*
-!reports/.gitkeep
+# Generated Charts
+app/static/charts/
 
-# IDE / OS files
-.idea/
-.vscode/
-*.DS_Store
+# OS Files
+.DS_Store
 Thumbs.db
 
-# Docker
-.dockerignore
+# Git
+.git/
