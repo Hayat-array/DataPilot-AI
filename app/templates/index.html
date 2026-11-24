@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DataPilot AI — Autonomous Data Science Platform</title>
-    <meta name="description" content="DataPilot AI: Production-grade autonomous AI platform for data analysis, visualization and insights.">
+<title>DataPilot AI — Dataset Analysis Dashboard</title>
+ <meta name="description" content="Profile, filter, and visualize CSV, JSON, and spreadsheet datasets directly in your browser.">
     <!-- High-Contrast Data Visualization Favicon (solid purple background + white columns + cyan trend line) -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%237c3aed'/%3E%3Crect x='14' y='32' width='8' height='18' rx='2.5' fill='white'/%3E%3Crect x='28' y='22' width='8' height='28' rx='2.5' fill='white'/%3E%3Crect x='42' y='12' width='8' height='38' rx='2.5' fill='white' opacity='0.9'/%3E%3Cpath d='M 8,44 L 22,30 L 36,20 L 52,14' stroke='%2338bdf8' stroke-width='4.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M 42,14 L 52,14 L 52,24' stroke='%2338bdf8' stroke-width='4.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -33,7 +33,7 @@
             </div>
             <div class="logo-info">
                 <span class="logo-name">DataPilot <span class="logo-ai">AI</span></span>
-                <span class="logo-sub">Autonomous Analytics Platform</span>
+                <span class="logo-sub">Browser-First Data Analysis</span>
             </div>
         </div>
     </div>
@@ -56,7 +56,7 @@
         </div>
 
         <!-- Theme Toggle -->
-        <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+        <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle color theme">
             <div class="toggle-track">
                 <div class="toggle-thumb">
                     <i class="fa-solid fa-sun" id="theme-icon-light"></i>
@@ -83,7 +83,7 @@
             <i class="fa-solid fa-robot"></i> <span>Ask AI</span>
         </button>
         <button class="tab-pill" id="pill-rag" onclick="switchTab('rag', this)">
-            <i class="fa-solid fa-database"></i> <span>RAG</span>
+            <i class="fa-solid fa-database"></i> <span>Reference</span>
         </button>
     </div>
 </div>
@@ -103,8 +103,9 @@
                     <i class="fa-solid fa-cloud-arrow-up"></i>
                     <span>Dataset</span>
                 </div>
-                <div class="upload-zone" id="upload-zone"
-                     onclick="document.getElementById('dataset-upload').click()"
+                <div class="upload-zone" id="upload-zone" role="button" tabindex="0" aria-label="Choose or drop a CSV, JSON, or Excel dataset, up to 16 MiB"
+                     onclick="if(event.target.id!=='dataset-upload')document.getElementById('dataset-upload').click()"
+                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('dataset-upload').click()}"
                      ondragover="event.preventDefault(); this.classList.add('drag-over')"
                      ondragleave="this.classList.remove('drag-over')"
                      ondrop="handleDrop(event)">
@@ -196,7 +197,7 @@
                     <div class="metric-icon"><i class="fa-solid fa-memory"></i></div>
                     <div class="metric-info">
                         <div class="metric-value" id="profile-size">—</div>
-                        <div class="metric-label">Memory</div>
+                        <div class="metric-label">Dataset Size</div>
                     </div>
                 </div>
             </div>
@@ -208,10 +209,10 @@
                     <button class="chip-btn" onclick="clearAllFilters()"><i class="fa-solid fa-xmark"></i> Clear all</button>
                 </div>
                 <div class="filter-row">
-                    <select id="filter-column" class="form-select">
+                    <select id="filter-column" class="form-select" aria-label="Filter by column">
                         <option value="">Column...</option>
                     </select>
-                    <select id="filter-operator" class="form-select">
+                    <select id="filter-operator" class="form-select" aria-label="Filter operator">
                         <option value="==">== equals</option>
                         <option value="!=">!= not equals</option>
                         <option value=">">&gt; greater</option>
@@ -344,18 +345,18 @@
                         </div>
                         <div>
                             <div style="font-weight:700; font-size:1rem;">Ask AI</div>
-                            <div style="font-size:0.75rem; color:var(--text-muted);">Multi-agent autonomous analytics engine</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">AI analysis requires an isolated execution service</div>
                         </div>
                     </div>
-                    <div class="ai-online-badge"><span></span> Online</div>
+                    <div class="ai-online-badge ai-unavailable" role="status" aria-label="AI analysis unavailable"><span aria-hidden="true"></span> Unavailable</div>
                 </div>
 
                 <!-- Chat Suggestions -->
                 <div class="chat-suggestions" id="chat-suggestions">
-                    <button class="suggestion-chip" onclick="injectSuggestion('show descriptive summary')">📊 Describe dataset</button>
-                    <button class="suggestion-chip" onclick="injectSuggestion('plot bar chart')">📈 Plot bar chart</button>
-                    <button class="suggestion-chip" onclick="injectSuggestion('show missing values')">🔍 Missing values</button>
-                    <button class="suggestion-chip" onclick="injectSuggestion('identify numeric columns')">🔢 Numeric columns</button>
+                    <button class="suggestion-chip" onclick="injectSuggestion('show descriptive summary')">Describe dataset</button>
+                    <button class="suggestion-chip" onclick="injectSuggestion('plot bar chart')">Plot bar chart</button>
+                    <button class="suggestion-chip" onclick="injectSuggestion('show missing values')">Missing values</button>
+                    <button class="suggestion-chip" onclick="injectSuggestion('identify numeric columns')">Numeric columns</button>
                 </div>
 
                 <!-- Messages -->
@@ -363,7 +364,7 @@
                     <div class="chat-bubble bot">
                         <div class="bubble-avatar bot-avatar"><i class="fa-solid fa-robot"></i></div>
                         <div class="bubble-body">
-                            <p>Hello! I am your Autonomous Data Science Co-Pilot, **Ask AI**. Ingest a dataset using the controls on the left, and ask me to clean, analyze, or plot relations.</p>
+                            <p>Dataset uploads, filtering, and visualizations work in this browser. AI-generated analysis is paused until a secure isolated execution service is available.</p>
                             <span class="bubble-time">Just now</span>
                         </div>
                     </div>
@@ -372,7 +373,7 @@
                 <!-- Input Bar -->
                 <div class="chat-input-bar">
                     <div class="chat-input-wrap">
-                        <input type="text" id="chat-text" class="chat-input" placeholder="Ask me anything about your data..." onkeypress="handleChatKey(event)">
+                        <input type="text" id="chat-text" class="chat-input" aria-label="Ask a question about your data" placeholder="Ask about your data; AI execution is currently unavailable" onkeypress="handleChatKey(event)">
                         <button class="chat-send-btn" onclick="sendChatMessage()">
                             <i class="fa-solid fa-paper-plane"></i>
                         </button>
@@ -386,45 +387,27 @@
             <div class="rag-grid">
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fa-solid fa-file-arrow-up"></i> Ingest Documents</h2>
+                            <h2 class="card-title"><i class="fa-solid fa-file-arrow-up"></i> Reference Library</h2>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Upload PDF Reference</label>
-                        <div class="file-input-wrap">
-                            <input type="file" id="pdf-ingest" class="form-input" accept=".pdf" style="cursor:pointer;">
-                        </div>
+                        <label class="form-label">Document ingestion is not configured</label>
+                        <p class="form-label">The document search service is not connected.</p>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">GitHub Documentation URL</label>
-                        <input type="text" id="github-url" class="form-input" placeholder="https://github.com/pandas-dev/pandas">
+                        <p class="form-label">Configure a persistent vector-index service to enable document search.</p>
                     </div>
-                    <button class="btn-primary" onclick="ingestDocumentation()" style="margin-top:0.5rem;">
-                        <i class="fa-solid fa-bolt"></i> Ingest & Chunk into FAISS
+                    <button class="btn-primary" type="button" disabled aria-disabled="true" style="margin-top:0.5rem;">
+                        <i class="fa-solid fa-lock" aria-hidden="true"></i> Ingestion unavailable
                     </button>
                 </div>
 
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title"><i class="fa-solid fa-layer-group"></i> Vector Index</h2>
-                        <span class="badge-count" id="rag-doc-count">2 docs</span>
+                        <span class="badge-count" id="rag-doc-count">Not connected</span>
                     </div>
                     <div class="doc-list" id="indexed-docs">
-                        <div class="doc-row">
-                            <div class="doc-row-icon"><i class="fa-solid fa-file-pdf"></i></div>
-                            <div class="doc-row-info">
-                                <strong>pandas_api_v2.pdf</strong>
-                                <span>Indexed • 124 chunks</span>
-                            </div>
-                            <span class="doc-badge">FAISS</span>
-                        </div>
-                        <div class="doc-row">
-                            <div class="doc-row-icon"><i class="fa-solid fa-file-pdf"></i></div>
-                            <div class="doc-row-info">
-                                <strong>numpy_linear_algebra.pdf</strong>
-                                <span>Indexed • 86 chunks</span>
-                            </div>
-                            <span class="doc-badge">FAISS</span>
-                        </div>
+                        <p class="empty-cell">No connected reference index.</p>
                     </div>
                 </div>
             </div>

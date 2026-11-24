@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════
    DATAPILOT AI — app.js
    Handles: Sidebar toggle, Theme toggle, Upload,
-   Filtering, Chart rendering, Chat (real API)
+   Filtering, Chart rendering, and API status feedback
 ═══════════════════════════════════════════ */
 
 // ── State ──────────────────────────────────
@@ -11,7 +11,8 @@ let dfColumns   = [];
 let activeChart = null;
 let activeChartType = 'bar';
 let currentFilters  = [];
-let uploadedFilename= '';
+let uploadedFilename = '';
+let chatRequestPending = false;
 let isSidebarOpen   = true;
 let isLightTheme    = false;
 
@@ -66,13 +67,22 @@ function switchTab(tabId, el) {
 }
 
 // ── Terminal Log ───────────────────────────
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+}
+
 function log(type, msg) {
     const term = document.getElementById('terminal-log');
     if (!term) return;
     const line = document.createElement('div');
     line.className = `tl ${type}`;
     const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-    line.innerHTML = `<span class="ts">[${ts}]</span>${msg}`;
+    const timestamp = document.createElement('span');
+    timestamp.className = 'ts';
+    timestamp.textContent = `[${ts}]`;
+    line.append(timestamp, document.createTextNode(String(msg ?? '').replace(/<\/?strong>/g, '')));
     term.appendChild(line);
     term.scrollTop = term.scrollHeight;
     // Keep max 120 lines
@@ -102,6 +112,11 @@ function handleUpload(input) {
 
     const ext    = file.name.split('.').pop().toLowerCase();
     const sizekb = (file.size / 1024).toFixed(1);
+    if (file.size > 16 * 1024 * 1024) {
+        log('error', 'Files larger than 16 MiB are not supported in browser analysis.');
+        if (input instanceof HTMLInputElement) input.value = '';
+        return;
+    }
     log('system', `Ingesting: <strong>${file.name}</strong> (${sizekb} KB) [${ext.toUpperCase()}]`);
     log('agent',  `Validator › routing to ${ext.toUpperCase()} parser...`);
 
@@ -230,8 +245,15 @@ function onParsed(data, cols, file) {
     updateDataDisplay();
     showQuickStats();
 
+    // Keep larger browser-supported files local rather than exceeding the serverless body limit.
+    if (file.size > 4 * 1024 * 1024) {
+        updateFileCardStatus('Local only · cache limit');
+        log('system', 'This dataset is available in this tab but exceeds the 4 MiB temporary server cache limit.');
+        return;
+    }
+
     // Upload to backend
-    log('agent', `Validator › uploading to backend...`);
+    log('agent', 'Validator › uploading to temporary server cache...');
     const fd = new FormData();
     fd.append('file', file);
     fetch('/api/upload', { method: 'POST', body: fd })
@@ -260,12 +282,12 @@ function renderFileCard(file) {
     const color  = colors[ext] || 'var(--accent-1)';
     document.getElementById('file-card-container').innerHTML = `
         <div class="file-card">
-            <div class="file-card-icon" style="color:${color}"><i class="fa-solid ${icon}"></i></div>
+            <div class="file-card-icon" style="color:${color}"><i class="fa-solid ${icon}" aria-hidden="true"></i></div>
             <div class="file-card-info">
-                <strong title="${file.name}">${file.name}</strong>
+                <strong title="${escapeHTML(file.name)}">${escapeHTML(file.name)}</strong>
                 <span id="file-card-status">${sizekb} KB · Uploading…</span>
             </div>
-            <div class="file-card-remove" onclick="removeFile()" title="Remove"><i class="fa-solid fa-xmark"></i></div>
+            <button class="file-card-remove" onclick="removeFile()" title="Remove dataset" aria-label="Remove dataset"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
     `;
 }
@@ -355,7 +377,7 @@ function updateDataDisplay() {
     const thead = document.getElementById('preview-thead');
     const tbody = document.getElementById('preview-tbody');
     const visibleCols = dfColumns.slice(0, 8);
-    thead.innerHTML = '<tr>' + visibleCols.map(c => `<th>${c}</th>`).join('') + '</tr>';
+    thead.innerHTML = '<tr>' + visibleCols.map(c => `<th>${escapeHTML(c)}</th>`).join('') + '</tr>';
 
     if (rows === 0) {
         tbody.innerHTML = `<tr><td colspan="${visibleCols.length}" class="empty-cell">No rows match the applied filters.</td></tr>`;
@@ -364,7 +386,7 @@ function updateDataDisplay() {
             '<tr>' + visibleCols.map(c => {
                 let v = row[c];
                 if (v === null || v === undefined) return '<td><em style="color:var(--text-muted)">null</em></td>';
-                return `<td>${v}</td>`;
+                return `<td>${escapeHTML(v)}</td>`;
             }).join('') + '</tr>'
         ).join('');
     }
@@ -381,10 +403,10 @@ function updateDataDisplay() {
             ? `μ = ${(sum/count).toFixed(2)}`
             : filteredData[0]?.[col] ? `"${String(filteredData[0][col]).slice(0,20)}"` : '—';
         return `<tr>
-            <td><strong>${col}</strong></td>
-            <td><span class="type-badge">${dtype}</span></td>
+            <td><strong>${escapeHTML(col)}</strong></td>
+            <td><span class="type-badge">${escapeHTML(dtype)}</span></td>
             <td>${nulls}</td>
-            <td>${stat}</td>
+            <td>${escapeHTML(stat)}</td>
         </tr>`;
     }).join('');
 
@@ -395,7 +417,7 @@ function updateDataDisplay() {
         const el = document.getElementById(id);
         const prev = id === 'visualizer-x' ? prevX : prevY;
         el.innerHTML = '<option value="">Select column...</option>' +
-            dfColumns.map(c => `<option value="${c}" ${c===prev?'selected':''}>${c}</option>`).join('');
+            dfColumns.map(c => `<option value="${escapeHTML(c)}" ${c===prev?'selected':''}>${escapeHTML(c)}</option>`).join('');
     });
 
     renderBadges();
@@ -468,7 +490,7 @@ function renderBadges() {
     if (currentFilters.length === 0) { hideBadges(); return; }
     panel.style.display = 'flex';
     badges.innerHTML = currentFilters.map((f,i) =>
-        `<span class="filter-tag">${f.column} ${f.op} ${f.val}<i class="fa-solid fa-xmark" onclick="removeFilter(${i})"></i></span>`
+        `<span class="filter-tag">${escapeHTML(f.column)} ${escapeHTML(f.op)} ${escapeHTML(f.val)}<button type="button" class="filter-remove-btn" aria-label="Remove filter ${escapeHTML(f.column)}" onclick="removeFilter(${i})"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></span>`
     ).join('');
 }
 
@@ -624,7 +646,7 @@ function downloadVisualChart() {
 
 // ── Chat ───────────────────────────────────
 function handleChatKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) sendChatMessage();
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent?.isComposing && e.keyCode !== 229) sendChatMessage();
 }
 
 function injectSuggestion(text) {
@@ -635,7 +657,8 @@ function injectSuggestion(text) {
 function sendChatMessage() {
     const input = document.getElementById('chat-text');
     const text  = input.value.trim();
-    if (!text) return;
+    if (!text || chatRequestPending) return;
+    chatRequestPending = true;
 
     appendBubble('user', text);
     input.value = '';
@@ -643,6 +666,8 @@ function sendChatMessage() {
 
     log('system', `Planner › dispatching: "${text}"`);
     const typingId = showTyping();
+    const sendButton = document.querySelector('.chat-send-btn');
+    if (sendButton) sendButton.disabled = true;
 
     fetch('/api/chat', {
         method: 'POST',
@@ -660,14 +685,18 @@ function sendChatMessage() {
                 generated_code: d.generated_code,
             });
         } else {
-            appendBubble('bot', `⚠️ ${res.error?.message || 'Unknown error'}`);
+            appendBubble('bot', res.error?.message || 'The analysis request could not be completed.');
             log('error', res.error?.message);
         }
     })
     .catch(err => {
         removeTyping(typingId);
-        appendBubble('bot', `🔴 Connection failed: ${err.message}`);
+        appendBubble('bot', `Connection failed: ${err.message}`);
         log('error', err.message);
+    })
+    .finally(() => {
+        chatRequestPending = false;
+        if (sendButton) sendButton.disabled = false;
     });
 }
 
@@ -680,15 +709,20 @@ function appendBubble(sender, html, opts = {}) {
     const blockId = 'code-' + Date.now();
 
     // ── Chart image (from backend matplotlib) ──
+    const chartUrl = typeof opts.chart_url === 'string' && /^\/static\/charts\/chart_[a-f0-9]+\.png$/i.test(opts.chart_url)
+        ? opts.chart_url
+        : '';
     let chartHtml = '';
-    if (opts.chart_url) {
+    if (chartUrl) {
         chartHtml = `
             <div class="chat-chart-wrap">
-                <img src="${opts.chart_url}?t=${Date.now()}" alt="Generated chart"
-                     class="chat-chart-img" onclick="openChartFull(this.src)">
+                <button type="button" class="chart-image-button" aria-label="Open generated chart in full screen" onclick="openChartFull(this.querySelector('img').src)">
+                    <img src="${escapeHTML(chartUrl)}?t=${Date.now()}" alt="Generated chart"
+                         class="chat-chart-img">
+                </button>
                 <div class="chart-caption">
-                    <i class="fa-solid fa-chart-area"></i> AI-Generated Chart
-                    <a href="${opts.chart_url}" download class="chart-dl-btn">
+                    <i class="fa-solid fa-chart-area" aria-hidden="true"></i> AI-Generated Chart
+                    <a href="${escapeHTML(chartUrl)}" download class="chart-dl-btn">
                         <i class="fa-solid fa-download"></i> Download
                     </a>
                 </div>
@@ -717,7 +751,7 @@ function appendBubble(sender, html, opts = {}) {
     div.innerHTML = `
         <div class="bubble-avatar ${avatarClass}"><i class="fa-solid ${avatarIcon}"></i></div>
         <div class="bubble-body">
-            <div class="bubble-content">${html}</div>
+            <div class="bubble-content">${escapeHTML(html)}</div>
             ${chartHtml}
             ${codeHtml}
             <span class="bubble-time">${time}</span>
@@ -867,44 +901,7 @@ function hideSuggestions() {
 
 // ── RAG Ingest ─────────────────────────────
 function ingestDocumentation() {
-    const pdfInput = document.getElementById('pdf-ingest');
-    const ghInput  = document.getElementById('github-url');
-    let name = pdfInput.files[0]?.name || ghInput.value.trim();
-    if (!name) return alert('Choose a PDF or enter a GitHub URL.');
-
-    log('system', `RAG › Ingesting: ${name}`);
-    setTimeout(() => {
-        log('agent', 'RAG › Chunking into overlapping text segments...');
-        setTimeout(() => {
-            log('agent', 'RAG › Generating embeddings → FAISS index...');
-            setTimeout(() => {
-                log('success', 'RAG › Index updated. Documents now searchable.');
-
-                const list = document.getElementById('indexed-docs');
-                const row  = document.createElement('div');
-                row.className = 'doc-row';
-                row.innerHTML = `
-                    <div class="doc-row-icon"><i class="fa-solid fa-file-pdf"></i></div>
-                    <div class="doc-row-info">
-                        <strong>${name}</strong>
-                        <span>Indexed • ~96 chunks</span>
-                    </div>
-                    <span class="doc-badge">FAISS</span>
-                `;
-                list.prepend(row);
-                row.style.animation = 'slideUp 0.35s var(--trans-bounce)';
-
-                const cnt = document.getElementById('rag-doc-count');
-                if (cnt) {
-                    const n = parseInt(cnt.textContent) + 1;
-                    cnt.textContent = `${n} docs`;
-                }
-
-                pdfInput.value = '';
-                ghInput.value  = '';
-            }, 900);
-        }, 900);
-    }, 600);
+    log('system', 'Reference ingestion is unavailable until a persistent vector-index service is configured.');
 }
 
 // ── Health Diagnostics ─────────────────────
@@ -933,9 +930,10 @@ async function runDiagnostics() {
         const data = await res.json();
         const dot  = document.getElementById('db-status');
         const txt  = document.getElementById('db-text');
-        const ok   = data.data?.checks?.database?.status === 'UP';
-        dot.className = ok ? 'status-dot connected' : 'status-dot disconnected';
-        txt.textContent = ok ? 'Connected' : 'Disconnected';
+        const ok = data.data?.checks?.database?.status === 'UP';
+        const notConfigured = data.error?.code === 'DATABASE_NOT_INITIALIZED';
+        dot.className = ok ? 'status-dot connected' : notConfigured ? 'status-dot' : 'status-dot disconnected';
+        txt.textContent = ok ? 'Connected' : notConfigured ? 'Not configured' : 'Disconnected';
     } catch {
         document.getElementById('db-status').className = 'status-dot disconnected';
         document.getElementById('db-text').textContent = 'Error';

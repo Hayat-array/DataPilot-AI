@@ -22,7 +22,7 @@
   ],
   "env": {
     "FLASK_ENV": "production",
-    "VALIDATE_ENV_ON_START": "false"
+    "VALIDATE_ENV_ON_START": "true"
   },
   "regions": ["iad1"]
 }
