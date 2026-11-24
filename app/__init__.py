@@ -1,15 +1,17 @@
 import os
-from flask import Flask
-from flask_cors import CORS
+
+from flask import Flask, request
+
 from app.config import config_by_name
 from app.extensions import init_extensions
 from app.logger import setup_logging
-from app.middleware.request_id import setup_request_id_middleware
 from app.middleware.error_handler import setup_error_handlers
+from app.middleware.request_id import setup_request_id_middleware
+from app.routes.api import api_bp
+from app.routes.frontend import frontend_bp
 from app.routes.health import health_bp
 from app.routes.swagger import swagger_bp
-from app.routes.frontend import frontend_bp
-from app.routes.api import api_bp
+
 
 def create_app(config_name=None):
     """Flask Application Factory."""
@@ -23,9 +25,6 @@ def create_app(config_name=None):
     
     # Initialize logger
     setup_logging(app)
-    
-    # Setup CORS
-    CORS(app)
     
     # Environment Validation
     validate_env = os.environ.get("VALIDATE_ENV_ON_START", "true").lower() == "true"
@@ -46,5 +45,15 @@ def create_app(config_name=None):
     app.register_blueprint(frontend_bp)
     app.register_blueprint(api_bp, url_prefix="/api")
     
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        if not app.config.get("DEBUG") and request.is_secure:
+            response.headers.setdefault("Strict-Transport-Security", "max-age=63072000")
+        return response
+
     app.logger.info(f"Flask Application initialized with config: {config_name}")
     return app

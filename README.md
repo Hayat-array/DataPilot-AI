@@ -1,6 +1,6 @@
 # DataPilot AI - Backend Foundation (Module 0)
 
-This is the Flask backend foundation and core infrastructure for **DataPilot AI**, a production-grade autonomous data analysis platform.
+DataPilot AI is a browser-first dataset profiling dashboard backed by a small Flask upload/cache and health API. AI-generated code execution and document ingestion are intentionally disabled until isolated execution and durable indexing services are available.
 
 ## Architecture
 
@@ -48,9 +48,6 @@ Python 3.12+ (or 3.13) is recommended.
 ### 2. Setup Virtual Environment
 
 ```bash
-# Navigate to backend
-cd backend
-
 # Create virtual environment
 python -m venv .venv
 
@@ -60,8 +57,8 @@ python -m venv .venv
 # Activate (bash/macOS/Linux)
 source .venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install runtime and development dependencies
+pip install -r requirements-dev.txt
 ```
 
 ### 3. Setup Environment Variables
@@ -70,7 +67,7 @@ Copy `.env.example` to `.env` and fill out variables:
 ```bash
 cp .env.example .env
 ```
-Ensure you have `SECRET_KEY`, `MONGO_URI`, and at least one LLM API key (e.g., `OPENAI_API_KEY`, `GROQ_API_KEY`, or `GOOGLE_API_KEY`).
+Configure `MONGO_URI` only when using database-backed features; a Flask `SECRET_KEY` is not required until server-side sessions are added. Temporary server uploads are capped at 4 MiB to stay within serverless request limits; browser-local analysis accepts files up to 16 MiB. Cached uploads are private, expire after one hour, and are not durable or shared across serverless instances. AI-generated Python execution and document ingestion remain disabled until isolated execution and persistent vector-index services are configured; browser-side profiling, filtering, and charts do not require those services.
 
 ### 4. Running the application
 

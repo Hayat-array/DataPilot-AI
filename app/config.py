@@ -3,13 +3,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv(override=True)
+load_dotenv(override=False)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 class BaseConfig:
     """Base Configuration"""
-    SECRET_KEY = os.environ.get("SECRET_KEY", "default-secret-key-change-me")
+    SECRET_KEY = os.environ.get("SECRET_KEY")
+    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_SIZE_BYTES", 4 * 1024 * 1024))
     
     # Databases
     MONGO_URI = os.environ.get("MONGO_URI")
